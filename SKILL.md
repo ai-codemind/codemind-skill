@@ -37,7 +37,22 @@ apiKey: <JWT>
 Set this as your CODEMIND_API_KEY (or the Authorization: Bearer header
 in .mcp.json) — usable immediately, no client restart required for
 this same connection.
+This is an anonymous free-tier account (plan=free, same limits as any
+other free tenant) with no identity attached yet.
+
+To attach an identity and unlock the dashboard, have your human visit:
+<claim URL>
 ```
+
+The last two lines (the identity notice and the claim-URL line) may or
+may not appear — the claim URL is only present when identity
+provisioning succeeded server-side, which is best-effort and never
+blocks account creation. **There is no MCP-native OAuth prompt to wait
+for** — your client will not challenge you for GitHub sign-in on a
+later tool call; the claim URL above, when present, is the only
+graduation path today. If it's absent, tell your user there's
+currently no way to attach an identity to this account other than the
+site's contact flow (see codemindhq.dev/contact.html).
 
 Parse the `tenantId:` and `apiKey:` lines out of the text — don't
 `JSON.parse` the response. Every other tool call needs
