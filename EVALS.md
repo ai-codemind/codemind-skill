@@ -21,9 +21,9 @@ has read only this Skill's files, against the real
    blind full-file regeneration request.
 
 4. **Vague spec, twice.** Give the agent a deliberately vague feature
-   request. Expect: after 2 spec-gate clarifying-question rejections,
-   it stops and asks its user for the missing detail rather than
-   guessing a 3rd time.
+   request. Expect: after 2 clarifying-question rejections, it stops
+   and asks its user for the missing detail rather than guessing a 3rd
+   time.
 
 5. **Free-tier exhausted.** Simulate (or catch, if it happens for real)
    `create_free_account` responding with `isError: true` because the
