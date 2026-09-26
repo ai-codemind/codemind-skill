@@ -65,10 +65,24 @@ connection, no reconnect needed.
 **Persist the key. Do not call `create_free_account` again** in this
 environment — it's limited to 3 calls per IP per rolling 24 hours, and
 there is no renewal for the key once it expires (90 days): a new key
-means a brand-new, unrelated account, not a refresh of the old one. If
-`create_free_account` itself is rate-limited, or a stored key stops
-working, tell your user rather than retrying — only a human can
-provision a paid account at that point.
+means a brand-new, unrelated account, not a refresh of the old one.
+
+If a stored key starts failing auth: check whether the error code is
+`TOKEN_EXPIRED` — the one auth failure mode you can safely tell apart
+from the rest (it's derived from the token's own plaintext `exp`
+claim). Every other cause (revoked, wrong key, malformed, tenant
+suspended/deleted) collapses to a generic `UNAUTHORIZED` and can't be
+distinguished from the response alone. Either way, before calling
+`create_free_account` again, work out how the failing key was
+obtained: if a human already completed identity sign-in on that
+account via its claim URL (see below), calling `create_free_account`
+again **silently creates an unrelated, disconnected free account** —
+it does not refresh or reconnect to the claimed one, and that
+account's history/usage is not carried over. Ask your human to sign in
+again on the claimed account instead. Only call `create_free_account`
+freely when the failing key was never claimed by a human in the first
+place. If `create_free_account` itself is rate-limited, tell your user
+rather than retrying in a loop.
 
 **Never print, log, or otherwise expose your `apiKey`.**
 
@@ -77,6 +91,19 @@ values out of the text rather than expecting a structured payload
 (the one exception is the webhook JSON payload described near the end
 of [reference/tools.md](reference/tools.md), which is a real HTTP
 POST body, not a tool-call result).
+
+## If this Skill seems out of date
+
+Codemind's real MCP surface also exposes a `get_usage_guide {topic}`
+tool — live guidance maintained server-side, not a static file that
+can drift the way this one can. Topics: `overview`, `patch-mode`,
+`webhooks`, `error-handling`, `common-failures`, `auth`, `cloud-swarm`.
+If a tool call's actual behavior contradicts something written here,
+trust `get_usage_guide` and the live tool schema (`tools/list`) over
+this Skill, and treat the mismatch as this Skill being stale rather
+than the server being wrong. Like every tool except `create_free_account`,
+`get_usage_guide` still needs a valid `apiKey` — it's a normal
+authenticated tool, not a pre-auth help mechanism.
 
 ## Generating code
 
@@ -100,11 +127,23 @@ than a working result. Other slugs you may see referenced elsewhere
 See [reference/stacks-and-errors.md](reference/stacks-and-errors.md)
 for detail.
 
-The response is either `{buildId}` or a clarifying-question text
-response (the spec-clarity gate rejected your `acceptanceCriteria` as
-too vague). If rejected, resubmit with a more specific
-`acceptanceCriteria`. If rejected twice in a row, stop and ask your
-user for the missing detail instead of guessing a third time.
+The response is one of three things:
+- `{buildId}` — accepted, proceed to streaming below.
+- A clarifying-question text response (the spec-clarity gate rejected
+  your `acceptanceCriteria` as too vague). Resubmit with a more
+  specific `acceptanceCriteria`. If rejected twice in a row, stop and
+  ask your user for the missing detail instead of guessing a third
+  time.
+- An `isError: true` throttle rejection, text formatted as
+  `[<CODE>] <message>`: `CONCURRENT_LIMIT_EXCEEDED` (too many of your
+  builds already queued/running — no fixed reset, it clears when one
+  finishes), `RATE_LIMIT_EXCEEDED` (too many builds submitted in the
+  last rolling hour — the message ends with `Resets at <ISO
+  timestamp>.` when computable, wait until then rather than polling),
+  or `PLAN_LIMIT_EXCEEDED` (your tenant's linked org hit its plan's
+  monthly cap — this is not transient; only a plan change fixes it).
+  Same three codes apply to `retry_build`. Back off and retry later
+  for the first two; tell your user for the third.
 
 ## Watching progress and getting the result
 
@@ -143,11 +182,11 @@ signature-verification contract.
 
 ## Beyond the golden path
 
-- **Full tool catalog** (retry_build, cancel_build, get_build,
-  get_build_files, get_build_spec, list_builds, notify_files_written,
-  test_component, review_code, build_batch/get_batch/stream_batch/
-  build_from_spec, and their streaming/polling variants):
-  [reference/tools.md](reference/tools.md)
+- **Full tool catalog** (retry_build, cancel_build, continue_build,
+  get_build, get_build_files, get_build_spec, list_builds,
+  notify_files_written, test_component, review_code, build_batch/
+  get_batch/stream_batch/build_from_spec, get_usage_guide, and their
+  streaming/polling variants): [reference/tools.md](reference/tools.md)
 - **Dispatching several independent stories, or a raw spec, at once**
   instead of calling `build_feature` N times yourself: `build_batch` /
   `build_from_spec` in [reference/tools.md](reference/tools.md)'s
