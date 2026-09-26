@@ -1,7 +1,11 @@
 # Codemind tool reference
 
-This covers every tool except the three golden-path ones documented in
-`SKILL.md` itself: `create_free_account`, `build_feature`, `stream_build`.
+This covers every tool for the build/test/review/batch surface this
+Skill supports, except the three golden-path ones documented in
+`SKILL.md` itself: `create_free_account`, `build_feature`,
+`stream_build`. It deliberately does NOT cover Cloud Repo Mode
+(`list_repos`, `get_triage_runs`, `get_triage_diagnostics`) — see the
+note at the end of this file for why and what those do.
 
 ## Contents
 - Build lifecycle: retry_build, cancel_build, continue_build, get_build, get_build_files, get_build_spec, list_builds
@@ -11,6 +15,7 @@ This covers every tool except the three golden-path ones documented in
 - Batch dispatch (Cloud Swarm): build_batch, get_batch, stream_batch, build_from_spec
 - get_usage_guide
 - Outbound webhooks (webhookUrl/webhookSecret)
+- Out of scope: Cloud Repo Mode tools
 
 ## Build lifecycle
 
@@ -73,10 +78,20 @@ resolves with pass/fail + the synthesized verification test.
 ## Standalone review
 
 **review_code** `{files?, diff?, context?, conventions?, relatedFiles?}` —
-at least one of `files`/`diff` required. Two independent LLM passes
-(general correctness/security + a dedicated silent-failure pass);
-findings merge and pass through an anti-hallucination filter before
-you see them. Returns a `reviewId`.
+at least one of `files`/`diff` required; `files`+`diff` combined must
+not exceed 150,000 characters. Two independent passes review it
+(general correctness/security + a dedicated silent-failure pass) and
+their findings merge into one verdict. Judgment only — no code runs
+here (use `test_component` for that). Returns a `reviewId`.
+
+**Strongly recommended, not just optional**: pass `conventions` (this
+project's CLAUDE.md/RULES.md content, or the relevant excerpt) so both
+passes can enforce project-specific rules, and `relatedFiles` (any
+existing file the change references but doesn't modify — an interface
+being implemented, a caller of a changed function) so findings get
+checked against real code instead of guessed. Omitting both still
+works, but produces a measurably weaker review with no codebase
+grounding.
 
 **stream_review** `{reviewId}` — resolves with `verdict`
 (`approve`/`request-changes`) + findings. A result may carry
@@ -195,3 +210,22 @@ Cross-check `x-codemind-v2-build-id` against the payload's own
 
 Delivery is at-least-once — your endpoint must be idempotent against
 duplicate deliveries of the same `buildId`+`event`.
+
+## Out of scope: Cloud Repo Mode
+
+Three more real, callable, auth-gated tools exist beyond everything
+above — `list_repos`, `get_triage_runs`, `get_triage_diagnostics` —
+but this Skill doesn't cover them in depth, because they only do
+anything useful for a repo that's already been attached through a
+separate GitHub App installation flow this Skill has no part in. In
+brief, for a repo that IS attached this way: `list_repos` (no
+arguments) lists your attached repos and their attachment ids;
+`get_triage_runs {repoAttachmentId}` lists that repo's auto-triaged
+issue history (a filed GitHub issue judged fixable gets built, tested
+against the repo's own real suite, and opened as a PR with no human
+step); `get_triage_diagnostics {triageRunId}` returns one run's
+generated diff (paths + line counts, not full content) and its
+before/after test output. If you're not sure whether a repo is
+attached this way, calling `list_repos` is harmless and answers the
+question — an empty result means no repos are attached and none of
+these three tools have anything to do.
