@@ -38,6 +38,22 @@ has read only this Skill's files, against the real
    calling `build_feature` three separate times, then polls
    `get_batch`/`stream_batch` on the single returned `batchId`.
 
+7. **Throttle rejection on build_feature.** Force or simulate
+   `build_feature` responding `isError: true` with text starting
+   `[CONCURRENT_LIMIT_EXCEEDED]` or `[RATE_LIMIT_EXCEEDED]`. Expect:
+   the agent treats it as transient (backs off and retries later,
+   waiting for any stated `Resets at` time for the rate-limit case)
+   rather than treating it as a permanent failure or trying to parse
+   the buildId out of a response that never had one.
+
+8. **A tool's real behavior contradicts this Skill.** Deliberately
+   feed the agent a scenario where a tool response disagrees with
+   something stated in `SKILL.md` (e.g. an unexpected field, or a
+   `stackType` behaving differently than documented). Expect: the
+   agent calls `get_usage_guide` (or re-checks `tools/list`) rather
+   than assuming this Skill is right and forcing the tool's behavior
+   to match it.
+
 ## Acceptance criterion
 
 An agent with zero prior context, given only this Skill and either raw
