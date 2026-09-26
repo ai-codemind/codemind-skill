@@ -8,8 +8,8 @@ patch specific files instead of generating a whole new codebase.
 - `role: "target"` — forces this path to become its own patchable
   component, even if your `acceptanceCriteria` doesn't name it
   explicitly. Use this specifically when a prior failed build's result
-  named the path under `unmatchedExistingFiles` — that means the
-  planner saw the file but didn't treat it as something to patch.
+  named the path under `unmatchedExistingFiles` — that means Codemind
+  saw the file but didn't treat it as something to patch.
 - `role: "context"` — this file is supplied only to resolve some
   *other* file's import, not to be patched itself. It exempts this
   file's own imports from the sibling-import check below — unless your
@@ -17,7 +17,7 @@ patch specific files instead of generating a whole new codebase.
   it's treated like a normal entry and the exemption doesn't apply.
 - Omitted `role` — **not** the same as `context`: this file's own
   relative imports are always required to be supplied, identically to
-  `target`. `role` only adds a signal about whether the planner treats
+  `target`. `role` only adds a signal about whether Codemind treats
   the path as a guaranteed component; it never removes the import
   requirement.
 - **A test-file path (`*.test.ts`, `*_test.go`, `test_*.py`, `*Test.kt`,
@@ -63,6 +63,15 @@ unverified-code risk for those specific files. Other files in the same
 build still get normal test coverage, and if *every* component in the
 build ends up test-skipped, the build still fails loudly (Codemind
 refuses to ship a build with zero test signal).
+
+**This only filters which test files get delivered to you — automated
+verification still always runs against every component regardless.**
+If the target project has no test infrastructure at all, expect the
+build to fail even with every file listed here — there's currently no
+fallback verification mode (e.g. typecheck-only) for a project with
+nothing to run tests through. `skipTestsFor` solves "I don't want a
+scaffolded test file I'll never use," not "this project has no way to
+run tests."
 
 ## Private registries — not supported for standalone builds
 
