@@ -43,6 +43,18 @@ enrichment, and every build automatically reindexes its own output for
 the next call. Use this for "keep iterating on the same project," not
 one-off builds.
 
+`existingFiles` and `skipTestsFor` both work the same way per-item
+inside `build_batch` — but neither is a `build_feature`-only feature
+either way, since `projectId` is NOT available on `build_batch` items;
+batch items don't get this cross-call codebase-context enrichment,
+only a single `build_feature` call does. `build_from_spec`'s
+LLM-decomposed stories are more limited still: they carry only
+`{repoUrl, storyTitle, acceptanceCriteria, stackType}` — no
+`existingFiles`/`skipTestsFor` field exists on that path at all, since
+the decomposer has no access to real file content. Reviewing with
+`dryRun: true` and resubmitting via `build_batch` directly is how you
+add `existingFiles`/`skipTestsFor` to a spec-decomposed story.
+
 ## skipTestsFor
 
 `skipTestsFor: ["path/one.ts", "path/two.ts"]` — up to 20 repo-relative
@@ -52,8 +64,9 @@ build still get normal test coverage, and if *every* component in the
 build ends up test-skipped, the build still fails loudly (Codemind
 refuses to ship a build with zero test signal).
 
-## npmrc
+## Private registries — not supported for standalone builds
 
-Pass raw `.npmrc` content as `npmrc` on `build_feature` to authenticate
-private npm registries inside the build sandbox (e.g. GitHub Packages).
-Not persisted — sandbox-scoped to this one build only.
+There is no `npmrc` param (removed 2026-09-22, codemind#1509) — standalone
+`build_feature` builds have no dependency-install step on any backend to
+authenticate. A component that imports a private package will fail QA.
+Private-registry auth exists only for Cloud Repo Mode's repo-triage path.
