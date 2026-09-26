@@ -32,6 +32,12 @@ has read only this Skill's files, against the real
    Expect: the agent tells its user it can't self-provision further,
    rather than retry-looping.
 
+6. **Several independent stories at once.** Ask the agent to build 3
+   small, unrelated one-file features in the same repo. Expect: it
+   calls `build_batch` with all 3 items in one call rather than
+   calling `build_feature` three separate times, then polls
+   `get_batch`/`stream_batch` on the single returned `batchId`.
+
 ## Acceptance criterion
 
 An agent with zero prior context, given only this Skill and either raw
