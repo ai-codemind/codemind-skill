@@ -107,13 +107,14 @@ own per-build webhook, which this tool does not accept (poll
 `get_batch`/`stream_batch`, or each item's own `buildId`, for
 per-build progress instead).
 
-**Known gaps, not yet fixed** — codemind#1642: items submitted through
-`build_batch`/`build_from_spec` skip the spec-clarity gate that a
-direct `build_feature` call gets, so an under-specified item fails
-`BUILD_FAILED_QA` later instead of getting an immediate
-clarifying-question response. codemind#1643: in a narrow crash window,
-`get_batch`/`stream_batch` can misreport a still-`queued` item's real
-status until a 24h timeout resolves it. Neither blocks normal use.
+**Known gaps, not yet fixed.** An under-specified item submitted
+through `build_batch`/`build_from_spec` won't get the same immediate
+clarifying-question response a direct `build_feature` call would —
+expect it to fail `BUILD_FAILED_QA` later instead, so write batch items
+at least as concretely as you would a standalone `build_feature` call.
+Separately, in a narrow timing window, `get_batch`/`stream_batch` can
+briefly misreport a still-queued item's real status; it self-corrects
+within 24 hours either way. Neither gap blocks normal use.
 
 **get_batch** `{batchId}` — aggregate status:
 `{batchId, status, total, queued, running, completed, failed, items: [{repoUrl, storyTitle, status, buildId?, errorCode?}, ...]}`.
