@@ -66,7 +66,8 @@ refuses to ship a build with zero test signal).
 
 ## Private registries — not supported for standalone builds
 
-There is no `npmrc` param (removed 2026-09-22, codemind#1509) — standalone
-`build_feature` builds have no dependency-install step on any backend to
-authenticate. A component that imports a private package will fail QA.
-Private-registry auth exists only for Cloud Repo Mode's repo-triage path.
+There is no `npmrc` param — standalone `build_feature` builds have no
+dependency-install step on any backend to authenticate. A component
+that imports a private package will fail QA. Private-registry auth
+exists only for Cloud Repo Mode's own repo-attachment path, which this
+Skill doesn't cover.
