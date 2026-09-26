@@ -10,11 +10,11 @@ necessarily fail fast with a clear error. Stick to known-good values.
 
 | stackType | Runtime | QA method |
 |---|---|---|
-| `worker` | TypeScript / Cloudflare Workers | Real test execution (dynamic workers backend) |
-| `python` | Python 3 | Real test execution (pytest, sandboxed) |
-| `go` | Go modules | Real test execution (go test, sandboxed) |
-| `swift-ios` | Swift | Real test execution (sandboxed) |
-| `kotlin-android` | Kotlin | Real test execution (sandboxed) |
+| `worker` | TypeScript / Cloudflare Workers | Real test execution |
+| `python` | Python 3 | Real test execution (pytest, isolated) |
+| `go` | Go modules | Real test execution (go test, isolated) |
+| `swift-ios` | Swift | Real test execution (isolated) |
+| `kotlin-android` | Kotlin | Real test execution (isolated) |
 
 **Experimental:** `rust` — reliably plans and generates, but QA
 reliably fails on a known multi-crate-workspace vs. single-crate-harness
