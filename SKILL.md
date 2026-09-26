@@ -145,8 +145,13 @@ signature-verification contract.
 
 - **Full tool catalog** (retry_build, cancel_build, get_build,
   get_build_files, get_build_spec, list_builds, notify_files_written,
-  test_component, review_code, and their streaming/polling variants):
+  test_component, review_code, build_batch/get_batch/stream_batch/
+  build_from_spec, and their streaming/polling variants):
   [reference/tools.md](reference/tools.md)
+- **Dispatching several independent stories, or a raw spec, at once**
+  instead of calling `build_feature` N times yourself: `build_batch` /
+  `build_from_spec` in [reference/tools.md](reference/tools.md)'s
+  "Batch dispatch (Cloud Swarm)" section.
 - **Working against an existing codebase** (patching specific files,
   iterative builds on the same project): [reference/patch-mode.md](reference/patch-mode.md)
 - **Stack support and error codes in full**: [reference/stacks-and-errors.md](reference/stacks-and-errors.md)
