@@ -4,11 +4,12 @@ This covers every tool except the three golden-path ones documented in
 `SKILL.md` itself: `create_free_account`, `build_feature`, `stream_build`.
 
 ## Contents
-- Build lifecycle: retry_build, cancel_build, get_build, get_build_files, get_build_spec, list_builds
+- Build lifecycle: retry_build, cancel_build, continue_build, get_build, get_build_files, get_build_spec, list_builds
 - notify_files_written
 - Standalone testing: test_component, stream_test, get_test
 - Standalone review: review_code, stream_review, get_review
 - Batch dispatch (Cloud Swarm): build_batch, get_batch, stream_batch, build_from_spec
+- get_usage_guide
 - Outbound webhooks (webhookUrl/webhookSecret)
 
 ## Build lifecycle
@@ -23,6 +24,19 @@ no webhook configured unless you separately submit a fresh
 
 **cancel_build** `{buildId}` — hard-stops an in-flight build. Already-terminal
 builds return a non-error "nothing to cancel" message, not an error.
+
+**continue_build** `{buildId, correctedAcceptanceCriteria}` — steers a
+`running` build without cancelling it: replaces the acceptance
+criteria for every component that hasn't started generating yet.
+Components already generating finish against the ORIGINAL criteria —
+this doesn't retroactively fix them. If every remaining component has
+already started, the correction is accepted but has no effect (you get
+a success message either way, not an error — there's no way to tell
+"applied" from "too late" apart from the response text). A `buildId`
+not in `running` status returns a non-error "nothing to steer" message
+naming the actual status. Use this when you realize your
+`acceptanceCriteria` was wrong shortly after submitting, instead of
+`cancel_build` + a fresh `build_feature` call.
 
 **get_build** `{buildId}` — point-in-time status/result, no streaming.
 
@@ -138,6 +152,15 @@ adjusted `specText`/`repos`. To submit an EDITED version of a dry run's
 output, call `build_batch` directly with your edited story list — a
 second `build_from_spec` call re-decomposes `specText` from scratch and
 won't reflect any edits you made to the dry run's output.
+
+## get_usage_guide
+
+`{topic?}` — live, server-maintained guidance for calling agents;
+`topic` defaults to `overview` if omitted. Valid topics: `overview`,
+`patch-mode`, `webhooks`, `error-handling`, `common-failures`, `auth`,
+`cloud-swarm`. Call this — not this Skill's own files — whenever you
+need guidance on something this Skill doesn't cover, or when a tool's
+actual behavior seems to contradict what's written here.
 
 ## Outbound webhooks
 
