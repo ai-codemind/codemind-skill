@@ -26,17 +26,21 @@ result — this is a known limitation, not something a better
 
 ## errorCode reference
 
-| errorCode | Meaning |
-|---|---|
-| `CAPACITY_EXHAUSTED` | No LLM capacity available right now |
-| `BUILD_FAILED_LIMITS` | Output exceeded size/token limits — narrow scope |
-| `BUILD_FAILED_QA` | Generated code failed automated testing |
-| `BUILD_FAILED_REVIEW` | Generated code failed an LLM code review pass |
-| `BUILD_FAILED_GENERATION` | The generator failed to produce valid output |
-| `INVALID_INPUT` | Request was malformed |
-| `UPSTREAM_UNAVAILABLE` | A dependency was unreachable — usually transient |
-| `INTERNAL_ERROR` | Unexpected server-side failure |
-| `ORACLE_INVALID` | Codemind's own test harness couldn't validate the result — not your bug |
+Terse lookup table — see `SKILL.md`'s "If a build doesn't succeed"
+section for the full guidance, including `ORACLE_INVALID`'s two-step
+fix.
+
+| errorCode | What it means | What to try |
+|---|---|---|
+| `CAPACITY_EXHAUSTED` | No generation capacity available right now | Wait, then `retry_build` |
+| `UPSTREAM_UNAVAILABLE` | A dependency was briefly unreachable | `retry_build` |
+| `INTERNAL_ERROR` | Unexpected server-side failure | `retry_build` once |
+| `BUILD_FAILED_QA` | Generated code failed automated testing | Add concrete examples to `acceptanceCriteria`, resubmit fresh |
+| `BUILD_FAILED_REVIEW` | Code passed testing but not an automated review pass | Same fix as `BUILD_FAILED_QA` |
+| `BUILD_FAILED_GENERATION` | Code generation didn't produce valid output | Narrower/more concrete spec, resubmit fresh |
+| `BUILD_FAILED_LIMITS` | Request too large for one build | Split the story |
+| `INVALID_INPUT` | Request malformed, or asked only for a test file | Fix the request — don't retry unchanged |
+| `ORACLE_INVALID` | Couldn't validate the result against your criteria | Add concrete examples, or supply real content via `existingFiles` for anything referenced by name |
 
 `error` is always a human-readable string with no model names, account
 IDs, or provider details. Branch your logic on `errorCode`, never on
