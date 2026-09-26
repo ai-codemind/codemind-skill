@@ -8,6 +8,7 @@ This covers every tool except the three golden-path ones documented in
 - notify_files_written
 - Standalone testing: test_component, stream_test, get_test
 - Standalone review: review_code, stream_review, get_review
+- Batch dispatch (Cloud Swarm): build_batch, get_batch, stream_batch, build_from_spec
 - Outbound webhooks (webhookUrl/webhookSecret)
 
 ## Build lifecycle
@@ -69,6 +70,74 @@ you see them. Returns a `reviewId`.
 missing this warning as full coverage if it's present.
 
 **get_review** `{reviewId}` — point-in-time poll, same shape as `get_build`.
+
+## Batch dispatch (Cloud Swarm)
+
+Use these instead of calling `build_feature` N times yourself when you
+already have several independent stories, or a raw spec to decompose.
+They exist for volume — a single build is still just `build_feature` +
+`stream_build`.
+
+**build_batch** `{items: [{repoUrl, storyTitle, acceptanceCriteria, stackType, existingFiles?, skipTestsFor?}, ...], idempotencyKey?, webhookUrl?, webhookSecret?}` —
+1 to 50 items per call. `repoUrl` is informational only (not used to
+fetch code — same as `build_feature`, code still comes from
+`existingFiles`). Returns one `batchId` immediately; items beyond a
+small burst cap are queued and dispatched automatically on a later
+drain tick, not dropped. `idempotencyKey`: a repeat call with the same
+key returns the original `batchId` instead of dispatching everything a
+second time — pass it if your client might retry the call after a
+timeout, omit it if you always want a genuinely new batch.
+`webhookUrl`/`webhookSecret` here fire **once**, when every item in the
+batch reaches a terminal state (see below) — separate from each item's
+own per-build webhook, which this tool does not accept (poll
+`get_batch`/`stream_batch`, or each item's own `buildId`, for
+per-build progress instead).
+
+**Known gaps, not yet fixed** — codemind#1642: items submitted through
+`build_batch`/`build_from_spec` skip the spec-clarity gate that a
+direct `build_feature` call gets, so an under-specified item fails
+`BUILD_FAILED_QA` later instead of getting an immediate
+clarifying-question response. codemind#1643: in a narrow crash window,
+`get_batch`/`stream_batch` can misreport a still-`queued` item's real
+status until a 24h timeout resolves it. Neither blocks normal use.
+
+**get_batch** `{batchId}` — aggregate status:
+`{batchId, status, total, queued, running, completed, failed, items: [{repoUrl, storyTitle, status, buildId?, errorCode?}, ...]}`.
+`status` is `running` while any item is `queued`/`running`, else
+`completed` (zero failures) or `completed_with_failures`. A `batchId`
+that doesn't exist, or belongs to a different tenant, both return the
+identical `isError: true` "batch not found" text — you can't
+distinguish a foreign batch from a nonexistent one.
+
+**stream_batch** `{batchId}` — polls the same aggregate status
+periodically and emits a progress notification each tick; closes once
+`status` is `completed` or `completed_with_failures`. It only covers
+items already dispatched at the moment you call it — items the queue
+drains later won't retroactively show up in that same call, re-call
+`stream_batch`/`get_batch` later to check on those. Prefer `get_batch`
+for a single point-in-time snapshot.
+
+**A failed individual item has no batch-specific retry** — call
+`retry_build {buildId}` directly on that item's `buildId` (from
+`get_batch`). This mints a **new** `buildId` not linked back to the
+batch: `get_batch`/`stream_batch` for the original `batchId` will keep
+reporting that item as `failed` even after the retry succeeds, and the
+aggregate webhook (already fired once) will not refire. Track a
+retried item's own outcome via `stream_build`/`get_build` on the new
+`buildId`.
+
+**build_from_spec** `{specText, repos: [{repoUrl, hint?}, ...], maxStories?, dryRun?, webhookUrl?, webhookSecret?}` —
+give it raw PRD/plan text plus the repos it's allowed to target;
+Codemind LLM-decomposes it into stories (each assigned to exactly one
+of your declared `repos` — the model can never invent a `repoUrl`
+outside that list) and dispatches them the same way `build_batch`
+does. `maxStories` defaults to 20, hard ceiling 50. Pass `dryRun: true`
+on a first call to review the decomposed story list before committing
+anything — a dry run makes zero writes, so it's free to retry with
+adjusted `specText`/`repos`. To submit an EDITED version of a dry run's
+output, call `build_batch` directly with your edited story list — a
+second `build_from_spec` call re-decomposes `specText` from scratch and
+won't reflect any edits you made to the dry run's output.
 
 ## Outbound webhooks
 
